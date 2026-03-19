@@ -1,8 +1,6 @@
-# English Study Pipeline — Overview
+# English Study Pipeline
 
-## Goal
-
-Automate the work between a Preply tutoring session and active vocabulary study in Anki, reducing manual effort to a single review step in Obsidian.
+Automates the work between a Preply tutoring session and active vocabulary study in Anki, reducing manual effort to a single review step in Obsidian.
 
 ## Pipeline stages
 
@@ -18,14 +16,31 @@ Download → Transcribe → Analyze → Review → Anki
 | **Review** | — | Manual | Human reviews and edits cards in Obsidian |
 | **Anki** | — | Manual | Trigger Obsidian-to-Anki sync |
 
+## Setup
+
+```bash
+# Copy config template and fill in your personal paths
+cp config.example.py config.py
+# Edit config.py with your actual lesson folder and Obsidian vault paths
+
+pip install playwright
+playwright install chrome
+# Also install: whisperx, ffmpeg
+
+export HF_TOKEN=your_huggingface_token
+```
+
 ## Running
 
 ```bash
 # Full pipeline (single command)
-python3 pipeline.py "Isabella 5 20260318"
+python3 pipeline.py "20260318-TutorName-5"
 
 # Skip download if audio parts already exist
-python3 pipeline.py "Isabella 5 20260318" --skip-download
+python3 pipeline.py "20260318-TutorName-5" --skip-download
+
+# Select specific stages
+python3 pipeline.py "20260318-TutorName-5" --stages=download,transcribe
 ```
 
 ## Flashcard design
@@ -48,3 +63,7 @@ Obsidian is the **source of truth** for all cards. Edits always happen in the ma
 ## Separate: audio playback files
 
 In addition to vocab cards, the `obsidian-audio-playback` Claude skill can create interactive playback files that let you listen to specific lesson moments with fine-tune buttons. These are created on demand, not part of the automated pipeline.
+
+## Technical details
+
+See [docs/PIPELINE_TECHNICAL.md](docs/PIPELINE_TECHNICAL.md) for architecture, stage internals, and dependency details.

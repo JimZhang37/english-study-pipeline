@@ -30,12 +30,13 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+from config import LESSONS_DIR
+
 # --- Config ---
 CHROME_BIN = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 CHROME_PROFILE_SRC = os.path.expanduser("~/Library/Application Support/Google/Chrome/Default")
 CHROME_SESSION_DIR = "/tmp/chrome-session"
 REMOTE_DEBUG_PORT = 9222
-LESSONS_DIR = Path.home() / "Documents" / "DD English lessons"
 
 
 def kill_chrome():

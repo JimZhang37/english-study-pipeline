@@ -22,9 +22,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-# --- Config ---
-LESSONS_DIR = Path.home() / "Documents" / "DD English lessons"
-VAULT_DIR = Path.home() / "Documents" / "obsidian vault" / "DD's English speaking class"
+from config import LESSONS_DIR, VAULT_DIR
 
 ALL_TASKS = ["vocab"]
 

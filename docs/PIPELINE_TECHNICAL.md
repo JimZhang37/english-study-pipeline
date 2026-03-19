@@ -6,20 +6,20 @@ Each stage is a standalone Python script. They can be run individually or orches
 
 ```
 pipeline.py
-  ├── preply_download.py  "TutorName N YYYYMMDD"   → part_*.webm files in lesson folder
-  ├── transcribe.py       "TutorName N YYYYMMDD"   → merged_lessons.webm + transcript files
-  └── analyze.py          "TutorName N YYYYMMDD"   → YYYY-MM-DD-lesson.md in Obsidian vault
+  ├── preply_download.py  "20260318-TutorName-5"   → part_*.webm files in lesson folder
+  ├── transcribe.py       "20260318-TutorName-5"   → merged_lessons.webm + transcript files
+  └── analyze.py          "20260318-TutorName-5"   → YYYY-MM-DD-lesson.md in Obsidian vault
 ```
 
 ---
 
 ## Stage 1: Download (`preply_download.py`)
 
-**Input:** lesson folder name (e.g. `"Isabella 5 20260318"`)
-**Output:** `part_01.webm … part_N.webm` extracted into `~/Documents/DD English lessons/Isabella 5 20260318/`
+**Input:** lesson folder name (e.g. `"20260318-TutorName-5"`)
+**Output:** `part_01.webm … part_N.webm` extracted into `~/Documents/Your English lessons/20260318-TutorName-5/`
 
 ### How it works
-1. Creates the lesson folder in `~/Documents/DD English lessons/`
+1. Creates the lesson folder in `~/Documents/Your English lessons/`
 2. Kills any running Chrome, copies Default profile to `/tmp/chrome-session`
 3. Launches Chrome with `--remote-debugging-port=9222` and connects via CDP
 4. Navigates to Preply dashboard, clicks first lesson in "Lesson Insights AI beta"
@@ -65,7 +65,7 @@ whisperx merged_lessons.webm \
 ## Stage 3: Analyze (`analyze.py`)
 
 **Input:** `merged_lessons.txt` — plain text with speaker labels (`[SPEAKER_00]: ...`)
-**Output:** `~/Documents/obsidian vault/DD's English speaking class/YYYY-MM-DD-lesson.md`
+**Output:** `~/Documents/obsidian vault/Your class folder/YYYY-MM-DD-lesson.md`
 
 ### How it works
 1. Reads `merged_lessons.txt` from the lesson folder
@@ -107,8 +107,8 @@ END
 ## Orchestrator (`pipeline.py`)
 
 ```bash
-python3 pipeline.py "Isabella 5 20260318"             # full pipeline
-python3 pipeline.py "Isabella 5 20260318" --skip-download  # skip download if parts exist
+python3 pipeline.py "20260318-TutorName-5"               # full pipeline
+python3 pipeline.py "20260318-TutorName-5" --skip-download  # skip download if parts exist
 ```
 
 Runs the three stages in sequence. Stops immediately if any stage fails.
@@ -139,8 +139,8 @@ For reviewing lesson recordings with tune buttons:
 # Use the obsidian-audio-playback skill in Claude Code
 # Timestamp lookup utility:
 python3 ~/.claude/skills/obsidian-audio-playback/scripts/srt_timestamps.py \
-  "~/Documents/DD English lessons/<folder>/merged_lessons.srt" \
+  "~/Documents/Your English lessons/<folder>/merged_lessons.srt" \
   "phrase to find" "another phrase"
 ```
 
-Output: `~/Documents/obsidian vault/DD's English speaking class/YYYY-MM-DD-playback-test.md`
+Output: `~/Documents/obsidian vault/Your class folder/YYYY-MM-DD-playback-test.md`

@@ -20,7 +20,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-LESSONS_DIR = Path.home() / "Documents" / "DD English lessons"
+from config import LESSONS_DIR
 SCRIPTS_DIR = Path(__file__).parent
 
 ALL_STAGES = ["download", "transcribe", "analyze"]

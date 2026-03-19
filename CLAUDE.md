@@ -17,22 +17,23 @@ All stages are orchestrated by `pipeline.py`.
 
 | Script | Usage | What it does |
 |---|---|---|
-| `pipeline.py` | `python3 pipeline.py "20260318-IsabellaM-5"` | Runs all three stages in sequence |
-| `preply_download.py` | `python3 preply_download.py "20260318-IsabellaM-5"` | Downloads + extracts audio parts into lesson folder |
-| `transcribe.py` | `python3 transcribe.py "20260318-IsabellaM-5"` | Merges parts, runs WhisperX, outputs transcript files |
-| `analyze.py` | `python3 analyze.py "20260318-IsabellaM-5"` | Extracts vocab cards and saves to Obsidian vault |
+| `pipeline.py` | `python3 pipeline.py "20260318-TutorName-5"` | Runs all three stages in sequence |
+| `preply_download.py` | `python3 preply_download.py "20260318-TutorName-5"` | Downloads + extracts audio parts into lesson folder |
+| `transcribe.py` | `python3 transcribe.py "20260318-TutorName-5"` | Merges parts, runs WhisperX, outputs transcript files |
+| `analyze.py` | `python3 analyze.py "20260318-TutorName-5"` | Extracts vocab cards and saves to Obsidian vault |
 | `calendar_trigger.py` | `python3 calendar_trigger.py` | Checks Google Calendar for completed lessons, triggers pipeline |
 
 `pipeline.py` accepts `--skip-download` or `--stages=download,transcribe,analyze` to control which stages run.
 
 ## Data locations
 
-- Lesson folders: `~/Documents/DD English lessons/<YYYYMMDD-TutorNameInitial-N>/`
-  - e.g. `20260212-IsabellaM-1/`
+Actual paths are set in `config.py` (gitignored). See `config.example.py` for the template.
+
+- Lesson folders: `<LESSONS_DIR>/<YYYYMMDD-TutorName-N>/`
+  - e.g. `20260212-TutorName-1/`
   - Contains: `part_01.webm` … `part_N.webm` (from download), then `merged_lessons.webm`, `merged_lessons.json`, `.txt`, `.srt`, `.vtt`, `.tsv` (from transcribe)
-- Anki cards: `~/Documents/obsidian vault/DD's English speaking class/YYYY-MM-DD-lesson.md`
-- Audio playback files: `~/Documents/obsidian vault/DD's English speaking class/YYYY-MM-DD-playback-test.md`
-- Anki profile: `~/Library/Application Support/Anki2/dd/`
+- Anki cards: `<VAULT_DIR>/YYYY-MM-DD-lesson.md`
+- Audio playback files: `<VAULT_DIR>/YYYY-MM-DD-playback-test.md`
 
 ## Environment variables
 
@@ -54,6 +55,7 @@ All stages are orchestrated by `pipeline.py`.
 ## Setup
 
 ```bash
+cp config.example.py config.py   # then edit config.py with your actual paths
 pip install playwright
 playwright install chrome
 # WhisperX and ffmpeg must also be installed
@@ -67,15 +69,15 @@ pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
 ```bash
 # Full pipeline
-python3 pipeline.py "20260318-IsabellaM-5"
+python3 pipeline.py "20260318-TutorName-5"
 
 # Select specific stages
-python3 pipeline.py "20260318-IsabellaM-5" --stages=download,transcribe
+python3 pipeline.py "20260318-TutorName-5" --stages=download,transcribe
 
 # Individual stages
-python3 preply_download.py "20260318-IsabellaM-5"
-python3 transcribe.py "20260318-IsabellaM-5"
-python3 analyze.py "20260318-IsabellaM-5"
+python3 preply_download.py "20260318-TutorName-5"
+python3 transcribe.py "20260318-TutorName-5"
+python3 analyze.py "20260318-TutorName-5"
 
 # Calendar trigger
 python3 calendar_trigger.py --auth          # one-time OAuth setup
@@ -104,7 +106,7 @@ To hand off: start a new session, optionally run `/model claude-sonnet-4-6`, the
 
 ## Obsidian audio playback
 
-- Playback files: `~/Documents/obsidian vault/DD's English speaking class/YYYY-MM-DD-playback-test.md`
+- Playback files: `<VAULT_DIR>/YYYY-MM-DD-playback-test.md`
 - Use the `obsidian-audio-playback` skill to create these — it handles button definitions, URL encoding, and timestamp extraction
 - Timestamp extraction uses `~/.claude/skills/obsidian-audio-playback/scripts/srt_timestamps.py` — pass the SRT file and phrases to search, get back seconds
 - Tune buttons use Templater templates: `tune-earlier.md`, `tune-later.md`, `tune-end-earlier.md`, `tune-end-later.md`

@@ -18,7 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-LESSONS_DIR = Path.home() / "Documents" / "DD English lessons"
+from config import LESSONS_DIR
 
 
 def run(cmd: list[str], env: dict = None) -> None:
