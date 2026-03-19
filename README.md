@@ -16,6 +16,33 @@ Download → Transcribe → Analyze → Review → Anki
 | **Review** | — | Manual | Human reviews and edits cards in Obsidian |
 | **Anki** | — | Manual | Trigger Obsidian-to-Anki sync |
 
+## Prerequisites and assumptions
+
+This pipeline is not fully self-contained — it relies on external applications and assumes certain conditions are already in place.
+
+### Desktop applications
+
+| Application | Required for | Assumption |
+|---|---|---|
+| **[Obsidian](https://obsidian.md)** | Review + sync | Vault exists and path is set in `config.py` |
+| **[Obsidian-to-Anki plugin](https://github.com/Pseudonium/Obsidian_to_Anki)** | Anki sync | Plugin installed and configured in Obsidian |
+| **[Anki](https://apps.ankiweb.net)** | Flashcard study | Must be running when the Obsidian-to-Anki sync is triggered |
+| **[Claude Code](https://claude.ai/code)** | Analyze stage | `analyze.py` calls `claude -p` as a subprocess; Claude Code must be installed and authenticated |
+| **Google Chrome** | Download stage | You are already logged into your Preply account in Chrome |
+
+The **Review** and **Anki** stages in the pipeline table above are manual steps performed inside Obsidian and Anki — there are no scripts for them.
+
+### Command-line tools
+
+| Tool | Required for | Install |
+|---|---|---|
+| **Python 3** | All stages | `brew install python` |
+| **[ffmpeg](https://ffmpeg.org)** | Transcribe stage | `brew install ffmpeg` |
+| **[WhisperX](https://github.com/m-bain/whisperX)** | Transcribe stage | `pip install whisperx` |
+| **[Playwright](https://playwright.dev/python/)** | Download stage | `pip install playwright && playwright install chrome` |
+
+**Note on WhisperX:** transcription runs entirely on your local machine — no audio is sent to any cloud service. WhisperX downloads the Whisper model weights on first run and performs all inference locally. This requires enough RAM/CPU (or a GPU) to run the model, and a HuggingFace token for the speaker diarization model.
+
 ## Setup
 
 ```bash
@@ -25,9 +52,10 @@ cp config.example.py config.py
 
 pip install playwright
 playwright install chrome
-# Also install: whisperx, ffmpeg
+pip install whisperx
+# ffmpeg must also be installed (e.g. brew install ffmpeg on macOS)
 
-export HF_TOKEN=your_huggingface_token
+export HF_TOKEN=your_huggingface_token  # HuggingFace token for WhisperX diarization
 ```
 
 ## Running
