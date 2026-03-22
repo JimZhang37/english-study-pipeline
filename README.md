@@ -90,7 +90,7 @@ Obsidian is the **source of truth** for all cards. Edits always happen in the ma
 
 ## Separate: audio playback files
 
-In addition to vocab cards, the `obsidian-audio-playback` Claude skill can create interactive playback files that let you listen to specific lesson moments with fine-tune buttons. These are created on demand, not part of the automated pipeline.
+In addition to vocab cards, the `lesson-analyzer playback` skill can create interactive playback files that let you listen to specific lesson moments with fine-tune buttons. These are created on demand, not part of the automated pipeline.
 
 ## Technical details
 

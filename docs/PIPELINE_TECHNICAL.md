@@ -70,11 +70,11 @@ whisperx merged_lessons.webm \
 ### How it works
 1. Reads `merged_lessons.txt` from the lesson folder
 2. Derives the date from the folder name (e.g. `20260212` → `2026-02-12`)
-3. Calls `claude -p` with the `lesson-vocab-cards` skill, passing the transcript
+3. Calls `claude -p` with the `lesson-analyzer` skill, passing the transcript
 4. The skill identifies the tutor, extracts Keywords and Vocabulary, and calls `obsidian-anki-writer` to save cards
 
 ### Skills used
-- **`lesson-vocab-cards`** — extracts two tiers of vocabulary from the transcript
+- **`lesson-analyzer`** — analyzes lesson transcripts (vocab extraction, audio playback, comprehension gaps)
 - **`obsidian-anki-writer`** — writes cards to the Obsidian vault in Obsidian-to-Anki format
 
 ### Card format
@@ -136,9 +136,9 @@ Claude Code must be running for `analyze.py` (uses `claude -p` subprocess with s
 For reviewing lesson recordings with tune buttons:
 
 ```bash
-# Use the obsidian-audio-playback skill in Claude Code
+# Use the lesson-analyzer playback skill in Claude Code
 # Timestamp lookup utility:
-python3 ~/.claude/skills/obsidian-audio-playback/scripts/srt_timestamps.py \
+python3 ~/.claude/skills/lesson-analyzer/scripts/srt_timestamps.py \
   "~/Documents/Your English lessons/<folder>/merged_lessons.srt" \
   "phrase to find" "another phrase"
 ```

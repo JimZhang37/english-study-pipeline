@@ -20,7 +20,7 @@ All stages are orchestrated by `pipeline.py`.
 | `pipeline.py` | `python3 pipeline.py "20260318-TutorName-5"` | Runs all three stages in sequence |
 | `preply_download.py` | `python3 preply_download.py "20260318-TutorName-5"` | Downloads + extracts audio parts into lesson folder |
 | `transcribe.py` | `python3 transcribe.py "20260318-TutorName-5"` | Merges parts, runs WhisperX, outputs transcript files |
-| `analyze.py` | `python3 analyze.py "20260318-TutorName-5"` | Extracts vocab cards and saves to Obsidian vault |
+| `analyze.py` | `python3 analyze.py "20260318-TutorName-5"` | Extracts vocab cards and saves to Obsidian vault (default: vocab only; use `--tasks tutor-report` or `--all`) |
 | `calendar_trigger.py` | `python3 calendar_trigger.py` | Checks Google Calendar for completed lessons, triggers pipeline |
 
 `pipeline.py` accepts `--skip-download` or `--stages=download,transcribe,analyze` to control which stages run.
@@ -29,10 +29,13 @@ All stages are orchestrated by `pipeline.py`.
 
 Actual paths are set in `config.py` (gitignored). See `config.example.py` for the template.
 
+- Lessons dir: `~/Documents/DD English lessons/`
+- Vault dir: `~/Documents/obsidian vault/DD's English speaking class/`
 - Lesson folders: `<LESSONS_DIR>/<YYYYMMDD-TutorName-N>/`
   - e.g. `20260212-TutorName-1/`
   - Contains: `part_01.webm` … `part_N.webm` (from download), then `merged_lessons.webm`, `merged_lessons.json`, `.txt`, `.srt`, `.vtt`, `.tsv` (from transcribe)
 - Anki cards: `<VAULT_DIR>/YYYY-MM-DD-lesson.md`
+- Tutor reports: `<VAULT_DIR>/YYYY-MM-DD-TutorName-tutor-report.md`
 - Audio playback files: `<VAULT_DIR>/YYYY-MM-DD-playback-test.md`
 
 ## Environment variables
@@ -42,15 +45,42 @@ Actual paths are set in `config.py` (gitignored). See `config.example.py` for th
   export HF_TOKEN=your_token_here
   ```
 
+## Plugin dependency
+
+This project uses the **english-study** Claude Code plugin for the analyze stage. Install it with:
+
+```
+/plugin marketplace add yaohua/yaohua-claude-plugins
+/plugin install english-study@yaohua-claude-plugins
+```
+
+Personal paths are stored in `plugin-config.local.md` (gitignored). Create it from the template:
+
+```bash
+cp plugin-config.example.md plugin-config.local.md
+# then edit plugin-config.local.md with your actual paths
+```
+
+The `@plugin-config.local.md` reference below loads your paths into every session.
+
+@plugin-config.local.md
+
 ## Analyze stage details
 
-- Uses **Claude skills** (`lesson-vocab-cards` → `obsidian-anki-writer`), not raw API calls
+- Uses **Claude skills** (`english-study:lesson-analyzer` → task-specific reference files), not raw API calls
 - Input: `merged_lessons.txt` — plain text transcript with speaker labels (e.g. `[SPEAKER_00]: ...`)
-- Output: Obsidian markdown with `TARGET DECK: Preply::YYYY-MM-DD`
-- Two tiers: **Keywords** (3-6 words student struggled with) and **Vocabulary** (6-10 broader useful words)
-- Card format: Cloze note type — `Text` has cloze syntax, `Back Extra` is the same sentence with cloze markers stripped (plain text, for AnkiMorphs)
-- `am-*` fields (AnkiMorphs plugin) are auto-filled after sync — do not set manually
-- Manual review in Obsidian before syncing to Anki is intentional (AI output quality varies)
+- **vocab task** (default):
+  - Output: Obsidian markdown with `TARGET DECK: Preply::YYYY-MM-DD`
+  - Two tiers: **Keywords** (3-6 words student struggled with) and **Vocabulary** (6-10 broader useful words)
+  - Card format: Cloze note type — `Text` has cloze syntax, `Back Extra` is the same sentence with cloze markers stripped (plain text, for AnkiMorphs)
+  - `am-*` fields (AnkiMorphs plugin) are auto-filled after sync — do not set manually
+  - Chains to `english-study:obsidian-anki-writer` skill
+- **tutor-report task**:
+  - Output: plain markdown report (no Anki syntax) — `YYYY-MM-DD-TutorName-tutor-report.md`
+  - Sections: Highlights, Suggested Focus, Student Progress, Engagement Signals, Recommended Topics
+  - Reads previous reports from the same tutor for cross-lesson trend analysis
+  - User copy-pastes into Preply messaging
+- Manual review in Obsidian before syncing/sending is intentional (AI output quality varies)
 
 ## Setup
 
@@ -77,7 +107,9 @@ python3 pipeline.py "20260318-TutorName-5" --stages=download,transcribe
 # Individual stages
 python3 preply_download.py "20260318-TutorName-5"
 python3 transcribe.py "20260318-TutorName-5"
-python3 analyze.py "20260318-TutorName-5"
+python3 analyze.py "20260318-TutorName-5"                          # vocab only (default)
+python3 analyze.py "20260318-TutorName-5" --tasks tutor-report     # tutor report only
+python3 analyze.py "20260318-TutorName-5" --all                    # vocab + tutor report
 
 # Calendar trigger
 python3 calendar_trigger.py --auth          # one-time OAuth setup
@@ -107,8 +139,8 @@ To hand off: start a new session, optionally run `/model claude-sonnet-4-6`, the
 ## Obsidian audio playback
 
 - Playback files: `<VAULT_DIR>/YYYY-MM-DD-playback-test.md`
-- Use the `obsidian-audio-playback` skill to create these — it handles button definitions, URL encoding, and timestamp extraction
-- Timestamp extraction uses `~/.claude/skills/obsidian-audio-playback/scripts/srt_timestamps.py` — pass the SRT file and phrases to search, get back seconds
+- Use the `lesson-analyzer playback` skill to create these — it handles button definitions, URL encoding, and timestamp extraction
+- Timestamp extraction uses the script bundled in the plugin (`scripts/srt_timestamps.py` via `${CLAUDE_SKILL_DIR}`) — pass the SRT file and phrases to search, get back seconds
 - Tune buttons use Templater templates: `tune-earlier.md`, `tune-later.md`, `tune-end-earlier.md`, `tune-end-later.md`
 - Startup click tracker (`startup-click-tracker.md`) must be registered in Templater → Startup Templates
 - Button definitions must appear at the TOP of the playback file — Buttons plugin registers them top-to-bottom
