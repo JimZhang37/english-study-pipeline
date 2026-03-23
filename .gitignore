@@ -4,5 +4,4 @@ __pycache__/
 *.pyo
 .env
 .DS_Store
-config.py
-plugin-config.local.md
+config.local.md

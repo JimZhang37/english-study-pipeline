@@ -22,12 +22,13 @@ All stages are orchestrated by `pipeline.py`.
 | `transcribe.py` | `python3 transcribe.py "20260318-TutorName-5"` | Merges parts, runs WhisperX, outputs transcript files |
 | `analyze.py` | `python3 analyze.py "20260318-TutorName-5"` | Extracts vocab cards and saves to Obsidian vault (default: vocab only; use `--tasks tutor-report` or `--all`) |
 | `calendar_trigger.py` | `python3 calendar_trigger.py` | Checks Google Calendar for completed lessons, triggers pipeline |
+| `capture_mistakes.py` | `python3 capture_mistakes.py` | Imports test photos from iCloud inbox into Obsidian for crop-first mistake workflow |
 
 `pipeline.py` accepts `--skip-download` or `--stages=download,transcribe,analyze` to control which stages run.
 
 ## Data locations
 
-Actual paths are set in `config.py` (gitignored). See `config.example.py` for the template.
+Actual paths are set in `config.local.md` (gitignored). See `config.example.md` for the template.
 
 - Lessons dir: `~/Documents/DD English lessons/`
 - Vault dir: `~/Documents/obsidian vault/DD's English speaking class/`
@@ -47,23 +48,33 @@ Actual paths are set in `config.py` (gitignored). See `config.example.py` for th
 
 ## Plugin dependency
 
-This project uses the **english-study** Claude Code plugin for the analyze stage. Install it with:
+This project uses the **english-study** and **mistake-notes** Claude Code plugins. Install with:
 
 ```
 /plugin marketplace add yaohua/yaohua-claude-plugins
 /plugin install english-study@yaohua-claude-plugins
+/plugin install mistake-notes@yaohua-claude-plugins
 ```
 
-Personal paths are stored in `plugin-config.local.md` (gitignored). Create it from the template:
+The `@config.local.md` reference below loads your paths into every session.
 
-```bash
-cp plugin-config.example.md plugin-config.local.md
-# then edit plugin-config.local.md with your actual paths
-```
+@config.local.md
 
-The `@plugin-config.local.md` reference below loads your paths into every session.
+## Mistake notes workflow (crop-first)
 
-@plugin-config.local.md
+A separate workflow for capturing mistakes from graded test photos (math, science, etc.) into Obsidian.
+
+Three steps: **import** (script) → **crop** (human in Obsidian) → **extract** (AI skill).
+
+1. **Import:** `python3 capture_mistakes.py` — scans `MISTAKES_INBOX` (iCloud), compresses photos to JPEG, copies to `<MISTAKES_DIR>/attachments/`, generates a prep file at `<MISTAKES_DIR>/reviews/YYYY-MM-DD-prep.md` with image embeds and duplicate buttons
+2. **Crop:** Human opens prep file in Obsidian Live Preview, right-clicks each image → Image Converter → crop to isolate one mistake per image. Uses "复制" button to duplicate images when a photo has multiple mistakes
+3. **Extract:** Run `/mistake-notes:finalize-mistakes` — reads each cropped image via AI vision, extracts structured fields, writes individual mistake note files to `<MISTAKES_DIR>/<subject>/YYYY-MM-DD-NNN.md`, deletes inbox source photos
+
+- Prep files: `<MISTAKES_DIR>/reviews/YYYY-MM-DD-prep.md`
+- Mistake notes: `<MISTAKES_DIR>/<subject>/YYYY-MM-DD-NNN.md`
+- Attachments: `<MISTAKES_DIR>/attachments/YYYY-MM-DD-pNN.jpg`
+- Dedup registry: `~/.english-pipeline/processed-photos.json`
+- Duplicate-photo template: `<VAULT_DIR>/../Templates/duplicate-photo.md`
 
 ## Analyze stage details
 
@@ -82,10 +93,19 @@ The `@plugin-config.local.md` reference below loads your paths into every sessio
   - User copy-pastes into Preply messaging
 - Manual review in Obsidian before syncing/sending is intentional (AI output quality varies)
 
+## Gitignored config
+
+`config.local.md` is the single gitignored config file containing all personal paths. It replaces the old `config.py` + `plugin-config.local.md` setup.
+
+- `config.example.md` — committed template; copy and fill in your paths
+- `config.py` — committed parser; reads `config.local.md` at import time
+- When creating a new worktree: `ln -s ../../../config.local.md config.local.md`
+- The `@config.local.md` reference in this file auto-loads paths into every Claude session; fails silently if missing
+
 ## Setup
 
 ```bash
-cp config.example.py config.py   # then edit config.py with your actual paths
+cp config.example.md config.local.md   # then edit config.local.md with your actual paths
 pip install playwright
 playwright install chrome
 # WhisperX and ffmpeg must also be installed
