@@ -1,176 +1,124 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with code in this repository.
 
-## Project purpose
+## Project overview
 
-An English study automation pipeline. The goal is to reduce the manual work between a Preply tutoring session and active vocabulary study. The pipeline stages:
+A personal study support system for one kid. The core pattern across all subjects: **capture input → LLM analysis → Obsidian vault → active study**.
 
-1. **Download** — fetch lesson audio zip from Preply's "Lesson Insights AI beta", extract parts into lesson folder (`preply_download.py`, implemented)
-2. **Transcribe** — merge audio parts and generate transcript with speaker diarization via WhisperX (`transcribe.py`, implemented)
-3. **Analyze** — extract vocabulary cards from transcript using Claude skills, save to Obsidian (`analyze.py`, implemented)
-4. **Study** — human reviews cards in Obsidian, then syncs to Anki via Obsidian-to-Anki plugin
+Two active workflows:
+- **English**: Preply tutoring audio → transcription → vocabulary cards and tutor feedback
+- **Math / school subjects**: graded test photos → cropped mistake images → structured mistake notes
 
-All stages are orchestrated by `pipeline.py`.
+Obsidian is the shared storage and review layer. AI generates content; a parent validates in Obsidian before syncing to Anki or sending feedback to tutors.
 
-## Scripts
+This is a **personal, localized system** — it depends on specific accounts (Preply, iCloud), local apps (Obsidian, Anki, Chrome), and a local Claude Code installation. Suggestions should favor simplicity and local execution over scalable or generic architectures.
 
-| Script | Usage | What it does |
-|---|---|---|
-| `pipeline.py` | `python3 pipeline.py "20260318-TutorName-5"` | Runs all three stages in sequence |
-| `preply_download.py` | `python3 preply_download.py "20260318-TutorName-5"` | Downloads + extracts audio parts into lesson folder |
-| `transcribe.py` | `python3 transcribe.py "20260318-TutorName-5"` | Merges parts, runs WhisperX, outputs transcript files |
-| `analyze.py` | `python3 analyze.py "20260318-TutorName-5"` | Extracts vocab cards and saves to Obsidian vault (default: vocab only; use `--tasks tutor-report` or `--all`) |
-| `calendar_trigger.py` | `python3 calendar_trigger.py` | Checks Google Calendar for completed lessons, triggers pipeline |
-| `capture_mistakes.py` | `python3 capture_mistakes.py` | Imports test photos from iCloud inbox into Obsidian for crop-first mistake workflow |
+## English study workflow
 
-`pipeline.py` accepts `--skip-download` or `--stages=download,transcribe,analyze` to control which stages run.
+**Input:** Preply lesson audio, fetched from "Lesson Insights AI beta" via Chrome automation
+**Stages:**
+1. `preply_download.py` — downloads audio zip, extracts `part_N.webm` files into lesson folder
+2. `transcribe.py` — merges audio parts, runs WhisperX with speaker diarization, outputs `.txt/.srt/.vtt/.tsv`
+3. `analyze.py` — calls `claude -p` with `english-study:lesson-analyzer` skill; writes to Obsidian vault
 
-## Data locations
+**Outputs:**
+- Vocab cards: `<VAULT_DIR>/YYYY-MM-DD-lesson.md` — Anki cloze format, synced via Obsidian-to-Anki plugin
+- Tutor report: `<VAULT_DIR>/YYYY-MM-DD-TutorName-tutor-report.md` — parent copy-pastes to Preply
+- Audio playback: `<VAULT_DIR>/YYYY-MM-DD-playback-test.md` — Obsidian file with tune buttons for reviewing audio
 
-Actual paths are set in `config.local.md` (gitignored). See `config.example.md` for the template.
+**Orchestrator:** `pipeline.py "YYYYMMDD-TutorName-N"` runs all three stages. Use `--skip-download` or `--stages=download,transcribe` to run partial pipelines.
 
-- Lessons dir: `~/Documents/DD English lessons/`
-- Vault dir: `~/Documents/obsidian vault/DD's English speaking class/`
-- Lesson folders: `<LESSONS_DIR>/<YYYYMMDD-TutorName-N>/`
-  - e.g. `20260212-TutorName-1/`
-  - Contains: `part_01.webm` … `part_N.webm` (from download), then `merged_lessons.webm`, `merged_lessons.json`, `.txt`, `.srt`, `.vtt`, `.tsv` (from transcribe)
-- Anki cards: `<VAULT_DIR>/YYYY-MM-DD-lesson.md`
-- Tutor reports: `<VAULT_DIR>/YYYY-MM-DD-TutorName-tutor-report.md`
-- Audio playback files: `<VAULT_DIR>/YYYY-MM-DD-playback-test.md`
+**Vocab card format:** Cloze note type. `Text` has `{{c1::word}}` syntax; `Back Extra` is the same sentence plain (for AnkiMorphs). `am-*` fields are auto-filled after Anki sync — do not set manually. Two tiers: Keywords (3-6 words student struggled with) and Vocabulary (6-10 broader useful words).
 
-## Environment variables
+**Tutor report:** Reads previous reports from the same tutor for cross-lesson trend analysis. Sections: Highlights, Suggested Focus, Student Progress, Engagement Signals, Recommended Topics.
 
-- `HF_TOKEN` — HuggingFace token, required by WhisperX for speaker diarization. Set in shell profile:
-  ```bash
-  export HF_TOKEN=your_token_here
-  ```
+## Math mistake notes workflow (crop-first)
 
-## Plugin dependency
+**Input:** iPhone test photos deposited into iCloud inbox (`MISTAKES_INBOX`)
+**Stages:**
+1. `capture_mistakes.py` — compresses photos, copies to `<MISTAKES_DIR>/attachments/`, generates prep file with image embeds and duplicate buttons. Deduplicates via `~/.english-pipeline/processed-photos.json`.
+2. Parent opens prep file in Obsidian Live Preview, right-clicks images → crop to isolate one mistake per image. Uses "复制" button when a photo has multiple mistakes.
+3. `/mistake-notes:finalize-mistakes` skill — reads each cropped image via AI vision, extracts structured fields, writes individual note files, deletes inbox source photos.
 
-This project uses the **english-study** and **mistake-notes** Claude Code plugins. Install with:
+**Outputs:** `<MISTAKES_DIR>/<subject>/YYYY-MM-DD-NNN.md` per mistake
 
+**File locations:**
+- Prep files: `<MISTAKES_DIR>/reviews/YYYY-MM-DD-prep.md`
+- Attachments: `<MISTAKES_DIR>/attachments/YYYY-MM-DD-pNN.jpg`
+
+## LLM integration
+
+`analyze.py` and `finalize-mistakes` call `claude -p` with Claude Code skills — not raw API calls. Skills carry specialized context: card formats, report structure, mistake taxonomy. Claude Code must be installed and authenticated where these scripts run.
+
+Skills used:
+- `english-study:lesson-analyzer` — vocab extraction and tutor report generation
+- `english-study:obsidian-anki-writer` — writes cards to Obsidian in Anki format
+- `mistake-notes:finalize-mistakes` — extracts structured data from cropped mistake images
+
+Install plugins:
 ```
 /plugin marketplace add yaohua/yaohua-claude-plugins
 /plugin install english-study@yaohua-claude-plugins
 /plugin install mistake-notes@yaohua-claude-plugins
 ```
 
-The `@config.local.md` reference below loads your paths into every session.
+## Scripts
 
-@config.local.md
+| Script | Usage | What it does |
+|---|---|---|
+| `pipeline.py` | `python3 pipeline.py "20260318-TutorName-5"` | Runs English study pipeline (download → transcribe → analyze) |
+| `preply_download.py` | `python3 preply_download.py "20260318-TutorName-5"` | Downloads + extracts Preply audio parts |
+| `transcribe.py` | `python3 transcribe.py "20260318-TutorName-5"` | Merges audio, runs WhisperX, outputs transcript files |
+| `analyze.py` | `python3 analyze.py "20260318-TutorName-5"` | Extracts vocab cards (default); add `--tasks tutor-report` or `--all` |
+| `capture_mistakes.py` | `python3 capture_mistakes.py` | Imports test photos from iCloud inbox, generates prep file |
+| `calendar_trigger.py` | `python3 calendar_trigger.py` | Checks Google Calendar for completed lessons, triggers pipeline |
 
-## Mistake notes workflow (crop-first)
+## Data locations
 
-A separate workflow for capturing mistakes from graded test photos (math, science, etc.) into Obsidian.
+Actual paths are set in `config.local.md` (gitignored). See `config.example.md` for the template.
 
-Three steps: **import** (script) → **crop** (human in Obsidian) → **extract** (AI skill).
+- Lessons: `<LESSONS_DIR>/YYYYMMDD-TutorName-N/` — contains audio parts, merged audio, transcript files
+- Vault: `<VAULT_DIR>/` — all Obsidian output (vocab cards, tutor reports, playback files)
+- Mistakes: `<MISTAKES_DIR>/` — subdirs by subject, plus `attachments/` and `reviews/`
 
-1. **Import:** `python3 capture_mistakes.py` — scans `MISTAKES_INBOX` (iCloud), compresses photos to JPEG, copies to `<MISTAKES_DIR>/attachments/`, generates a prep file at `<MISTAKES_DIR>/reviews/YYYY-MM-DD-prep.md` with image embeds and duplicate buttons
-2. **Crop:** Human opens prep file in Obsidian Live Preview, right-clicks each image → Image Converter → crop to isolate one mistake per image. Uses "复制" button to duplicate images when a photo has multiple mistakes
-3. **Extract:** Run `/mistake-notes:finalize-mistakes` — reads each cropped image via AI vision, extracts structured fields, writes individual mistake note files to `<MISTAKES_DIR>/<subject>/YYYY-MM-DD-NNN.md`, deletes inbox source photos
+## Environment variables
 
-- Prep files: `<MISTAKES_DIR>/reviews/YYYY-MM-DD-prep.md`
-- Mistake notes: `<MISTAKES_DIR>/<subject>/YYYY-MM-DD-NNN.md`
-- Attachments: `<MISTAKES_DIR>/attachments/YYYY-MM-DD-pNN.jpg`
-- Dedup registry: `~/.english-pipeline/processed-photos.json`
-- Duplicate-photo template: `<VAULT_DIR>/../Templates/duplicate-photo.md`
-
-## Analyze stage details
-
-- Uses **Claude skills** (`english-study:lesson-analyzer` → task-specific reference files), not raw API calls
-- Input: `merged_lessons.txt` — plain text transcript with speaker labels (e.g. `[SPEAKER_00]: ...`)
-- **vocab task** (default):
-  - Output: Obsidian markdown with `TARGET DECK: Preply::YYYY-MM-DD`
-  - Two tiers: **Keywords** (3-6 words student struggled with) and **Vocabulary** (6-10 broader useful words)
-  - Card format: Cloze note type — `Text` has cloze syntax, `Back Extra` is the same sentence with cloze markers stripped (plain text, for AnkiMorphs)
-  - `am-*` fields (AnkiMorphs plugin) are auto-filled after sync — do not set manually
-  - Chains to `english-study:obsidian-anki-writer` skill
-- **tutor-report task**:
-  - Output: plain markdown report (no Anki syntax) — `YYYY-MM-DD-TutorName-tutor-report.md`
-  - Sections: Highlights, Suggested Focus, Student Progress, Engagement Signals, Recommended Topics
-  - Reads previous reports from the same tutor for cross-lesson trend analysis
-  - User copy-pastes into Preply messaging
-- Manual review in Obsidian before syncing/sending is intentional (AI output quality varies)
-
-## Gitignored config
-
-`config.local.md` is the single gitignored config file containing all personal paths. It replaces the old `config.py` + `plugin-config.local.md` setup.
-
-- `config.example.md` — committed template; copy and fill in your paths
-- `config.py` — committed parser; reads `config.local.md` at import time
-- When creating a new worktree: `ln -s ../../../config.local.md config.local.md`
-- The `@config.local.md` reference in this file auto-loads paths into every Claude session; fails silently if missing
+- `HF_TOKEN` — HuggingFace token, required by WhisperX for speaker diarization
 
 ## Setup
 
 ```bash
-cp config.example.md config.local.md   # then edit config.local.md with your actual paths
-pip install playwright
-playwright install chrome
+cp config.example.md config.local.md   # fill in your actual paths
+pip install playwright && playwright install chrome
 # WhisperX and ffmpeg must also be installed
 export HF_TOKEN=your_huggingface_token
-
-# For calendar trigger (optional)
-pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
 ```
 
-## Running
+## Obsidian audio playback
 
-```bash
-# Full pipeline
-python3 pipeline.py "20260318-TutorName-5"
+- Use the `lesson-analyzer playback` skill to create playback files
+- Timestamp extraction uses `scripts/srt_timestamps.py` bundled in the plugin
+- Tune buttons use Templater templates: `tune-earlier.md`, `tune-later.md`, `tune-end-earlier.md`, `tune-end-later.md`
+- Startup click tracker (`startup-click-tracker.md`) must be registered in Templater → Startup Templates
+- **Button definitions must appear at the TOP of the file** — Buttons plugin registers top-to-bottom
+- **Open in Live Preview mode** — tune buttons don't work in Reading mode
 
-# Select specific stages
-python3 pipeline.py "20260318-TutorName-5" --stages=download,transcribe
+## Chrome automation constraints
 
-# Individual stages
-python3 preply_download.py "20260318-TutorName-5"
-python3 transcribe.py "20260318-TutorName-5"
-python3 analyze.py "20260318-TutorName-5"                          # vocab only (default)
-python3 analyze.py "20260318-TutorName-5" --tasks tutor-report     # tutor report only
-python3 analyze.py "20260318-TutorName-5" --all                    # vocab + tutor report
+The download step uses Chrome remote debugging (CDP) to preserve real macOS Keychain cookies.
 
-# Calendar trigger
-python3 calendar_trigger.py --auth          # one-time OAuth setup
-python3 calendar_trigger.py --find-calendars # find Preply calendar ID
-python3 calendar_trigger.py --dry-run       # test without running pipeline
-python3 calendar_trigger.py                 # normal run
-```
-
-## Calendar trigger
-
-Config: `~/.english-pipeline/config.json` — set `calendar_id` and tutor mappings.
-Schedule: `~/Library/LaunchAgents/com.english-pipeline.calendar-trigger.plist` — runs daily at 10 PM.
-Logs: `~/.english-pipeline/logs/`
-
-## Development approach
-
-Test new approaches in isolation before applying them to the project. Solve one problem at a time — verify a technique works on its own before wiring it into a larger script. This saves time and avoids debugging multiple unknowns at once.
+- **Never use `launch_persistent_context`** with the real Chrome profile — Playwright adds `--use-mock-keychain` and `--password-store=basic`, corrupting macOS cookie encryption
+- **Always copy the profile** to `/tmp/chrome-session`; never use the original
+- Chrome blocks `--remote-debugging-port` on the default user-data-dir path — requires a non-default temp path
+- Connect via `playwright.chromium.connect_over_cdp("http://localhost:9222")` after launching Chrome as subprocess
 
 ## Planning workflow
 
 At the end of plan mode, before handing off to a new session:
 1. Ask the user if they want to switch models (e.g. Sonnet for implementation)
-2. Save the plan file path to MEMORY.md (not here — the filename is ephemeral and changes per plan)
+2. Save the plan file path to MEMORY.md (not here — the filename is ephemeral)
 
 To hand off: start a new session, optionally run `/model claude-sonnet-4-6`, then reference the plan file from MEMORY.md.
 
-## Obsidian audio playback
-
-- Playback files: `<VAULT_DIR>/YYYY-MM-DD-playback-test.md`
-- Use the `lesson-analyzer playback` skill to create these — it handles button definitions, URL encoding, and timestamp extraction
-- Timestamp extraction uses the script bundled in the plugin (`scripts/srt_timestamps.py` via `${CLAUDE_SKILL_DIR}`) — pass the SRT file and phrases to search, get back seconds
-- Tune buttons use Templater templates: `tune-earlier.md`, `tune-later.md`, `tune-end-earlier.md`, `tune-end-later.md`
-- Startup click tracker (`startup-click-tracker.md`) must be registered in Templater → Startup Templates
-- Button definitions must appear at the TOP of the playback file — Buttons plugin registers them top-to-bottom
-- Files must be opened in **Live Preview mode** — tune buttons don't work in Reading mode
-
-## Chrome automation constraints
-
-The download step uses **Chrome remote debugging (CDP)** rather than Playwright's built-in browser launch, to preserve real macOS Keychain cookies and login sessions.
-
-- **Never use `launch_persistent_context`** with the real Chrome profile — Playwright injects `--use-mock-keychain` and `--password-store=basic`, which corrupts macOS cookie encryption and logs the user out of all accounts.
-- **Always copy the profile** to `/tmp/chrome-session` first; never point Chrome at the original `~/Library/Application Support/Google/Chrome/Default`.
-- Chrome blocks `--remote-debugging-port` when `--user-data-dir` is the default Chrome path — the non-default temp path is required.
-- Connect via `playwright.chromium.connect_over_cdp("http://localhost:9222")` after launching Chrome as a subprocess.
+@config.local.md
