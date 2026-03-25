@@ -113,11 +113,17 @@ The download step uses Chrome remote debugging (CDP) to preserve real macOS Keyc
 - Chrome blocks `--remote-debugging-port` on the default user-data-dir path — requires a non-default temp path
 - Connect via `playwright.chromium.connect_over_cdp("http://localhost:9222")` after launching Chrome as subprocess
 
+## Skill design principles
+
+- **Use parallel subagents for batch work** — if a skill loops over N items (images, files, records) and each generates significant output, dispatch one subagent per item using the Agent tool. This avoids the 32k output token limit and runs faster. The main agent coordinates: pre-assign IDs, spawn all agents in one message, collect results, do final cleanup. See `mistake-notes:finalize-mistakes` as the reference implementation.
+
 ## Planning workflow
 
 At the end of plan mode, before handing off to a new session:
 1. Ask the user if they want to switch models (e.g. Sonnet for implementation)
 2. Save the plan file path to MEMORY.md (not here — the filename is ephemeral)
+
+**Always save the plan link to auto memory immediately after a plan is written.** The user will clear context and start a new session for implementation — if the plan path isn't in memory, the next session won't know where to find it.
 
 To hand off: start a new session, optionally run `/model claude-sonnet-4-6`, then reference the plan file from MEMORY.md.
 
