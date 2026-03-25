@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数学错题小测验</title>
+
+  <!-- KaTeX for LaTeX math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"></script>
+
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 15mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", serif;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #000;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ── Header ── */
+    .exam-header {
+      text-align: center;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #000;
+    }
+
+    .exam-title {
+      font-size: 22px;
+      font-weight: bold;
+      margin: 0 0 6px 0;
+    }
+
+    .exam-meta {
+      font-size: 13px;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+    }
+
+    .name-blank {
+      border-bottom: 1px solid #000;
+      display: inline-block;
+      min-width: 80px;
+    }
+
+    /* ── Problem blocks ── */
+    .problem {
+      margin-bottom: 12px;
+      page-break-inside: avoid;
+    }
+
+    .problem-content {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+
+    .problem-number {
+      font-weight: bold;
+      min-width: 24px;
+      flex-shrink: 0;
+    }
+
+    .problem-text {
+      flex: 1;
+    }
+
+    /* Diagram reference (small, beside text) */
+    .problem-image--diagram {
+      margin-left: 32px;
+      margin-bottom: 6px;
+    }
+    .problem-image--diagram img {
+      max-width: 60%;
+      max-height: 160px;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* Full photo as question (large) */
+    .problem-image--full {
+      margin-left: 32px;
+      margin-bottom: 6px;
+    }
+    .problem-image--full img {
+      max-width: 85%;
+      max-height: 480px;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* ── Answer space ── */
+    .answer-space {
+      border: 1px dashed #999;
+      margin-left: 32px;
+      height: {{ answer_height }}px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="exam-header">
+    <p class="exam-title">数学错题小测验</p>
+    <div class="exam-meta">
+      <span>{{ today }}</span>
+      <span>共 {{ problem_count }} 题</span>
+      <span>姓名：<span class="name-blank">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></span>
+    </div>
+  </div>
+
+  <!-- Problems -->
+  {% for problem in problems %}
+  <div class="problem">
+    {% if problem.mode == "photo" %}
+      <div class="problem-content">
+        <span class="problem-number">{{ loop.index }}.</span>
+        <div class="problem-image problem-image--full">
+          <img src="{{ problem.image_url }}" alt="题目图片">
+        </div>
+      </div>
+    {% else %}
+      <div class="problem-content">
+        <span class="problem-number">{{ loop.index }}.</span>
+        <div class="problem-text">{{ problem.problem_html | safe }}</div>
+      </div>
+      {% if problem.diagram_url %}
+      <div class="problem-image problem-image--diagram">
+        <img src="{{ problem.diagram_url }}" alt="几何图">
+      </div>
+      {% endif %}
+    {% endif %}
+    <div class="answer-space"></div>
+  </div>
+  {% endfor %}
+
+</body>
+</html>
